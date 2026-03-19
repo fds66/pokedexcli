@@ -2,14 +2,17 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
 	"os"
 	"strings"
+
+	"github.com/fds66/pokedexcli/internal/pokeapi"
 )
+
+type config struct {
+	Next     *string
+	Previous *string
+}
 
 func startRepl() {
 	/* start up cli*/
@@ -115,67 +118,41 @@ func commandHelp(configuration *config) error {
 
 }
 
-type pokemonResponse struct {
-	Count    int               `json:"count"`
-	Next     *string           `json:"next"`
-	Previous *string           `json:"previous"`
-	Results  []pokemonLocation `json:"results"`
-}
-
-type pokemonLocation struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
-type config struct {
-	Next     *string
-	Previous *string
-}
-
 func commandMap(configuration *config) error {
 	// displays the names of 20 location areas in Pokemon world. Each new call gives next 20
 	baseurl := "https://pokeapi.co/api/v2/location-area/"
 	nextPage := configuration.Next
-	if nextPage == nil {
-		getAPIdata(baseurl, configuration)
-	} else {
-		url := *nextPage
-		getAPIdata(url, configuration)
+	url := baseurl
+	if nextPage != nil {
+		url = *nextPage
 	}
+	pokeData, err := pokeapi.GetAPIdata(url)
+	if err != nil {
+		fmt.Printf("API call failed %v", err)
+	}
+	usePokeData(pokeData, configuration)
 
 	return nil
 
 }
 
 func commandMapb(configuration *config) error {
-	// displays the names of 20 location areas in Pokemon world. Each new call gives next 20
+	// displays the names of 20 location areas in Pokemon world. This call gives the previous 20 if they exist otherwise just tells you are on the first page
 	previousPage := configuration.Previous
 	if previousPage == nil {
 		fmt.Println("you're on the first page")
-	} else {
-		url := *previousPage
-		getAPIdata(url, configuration)
+		return nil
 	}
-
+	url := *previousPage
+	pokeData, err := pokeapi.GetAPIdata(url)
+	if err != nil {
+		fmt.Printf("API call failed %v", err)
+	}
+	usePokeData(pokeData, configuration)
 	return nil
 }
 
-func getAPIdata(request string, configuration *config) error {
-	results, err := http.Get(request)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer results.Body.Close()
-	body, err := io.ReadAll(results.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	//fmt.Println(string(body)) if I want to check the body while debugging
-
-	var pokeData pokemonResponse
-	if err := json.Unmarshal(body, &pokeData); err != nil {
-		log.Fatal(err)
-	}
+func usePokeData(pokeData pokeapi.PokemonResponse, configuration *config) error {
 	//location := pokeData.Results[0].Name
 	for _, location := range pokeData.Results {
 		fmt.Println(location.Name)
@@ -191,6 +168,5 @@ func getAPIdata(request string, configuration *config) error {
 	} else {
 		configuration.Previous = nil
 	}
-
 	return nil
 }
