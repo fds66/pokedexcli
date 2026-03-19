@@ -2,9 +2,12 @@ package pokeapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/fds66/pokedexcli/internal/pokecache"
 )
 
 type Client struct {
@@ -32,23 +35,36 @@ type PokemonLocation struct {
 	URL  string `json:"url"`
 }
 
-func (c *Client) GetAPIdata(url string) (PokemonResponse, error) {
+func (c *Client) GetAPIdata(url string, cache *pokecache.Cache) (PokemonResponse, error) {
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return PokemonResponse{}, err
+	// Check if the results already exist in the cache
+
+	var body []byte
+	cachedData, success := cache.Get(url)
+	if success {
+		body = cachedData
+		fmt.Println("found cached page")
+	} else {
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return PokemonResponse{}, err
+		}
+
+		results, err := c.httpClient.Do(req)
+		if err != nil {
+			return PokemonResponse{}, err
+		}
+		defer results.Body.Close()
+		body, err = io.ReadAll(results.Body)
+		if err != nil {
+			return PokemonResponse{}, err
+		}
+		if cache.Add(url, body) {
+			fmt.Println("data added to cache")
+		}
 	}
 
-	results, err := c.httpClient.Do(req)
-	if err != nil {
-		return PokemonResponse{}, err
-	}
-	defer results.Body.Close()
-	body, err := io.ReadAll(results.Body)
-	if err != nil {
-		return PokemonResponse{}, err
-	}
-	//fmt.Println(string(body)) if I want to check the body while debugging
+	//fmt.Println(string(body)) //if I want to check the body while debugging
 
 	var pokeData PokemonResponse
 	if err := json.Unmarshal(body, &pokeData); err != nil {

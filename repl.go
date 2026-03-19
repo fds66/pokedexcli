@@ -7,15 +7,17 @@ import (
 	"strings"
 
 	"github.com/fds66/pokedexcli/internal/pokeapi"
+	"github.com/fds66/pokedexcli/internal/pokecache"
 )
 
-type config struct {
+type Config struct {
 	PokeapiClient pokeapi.Client
+	Cache         *pokecache.Cache
 	Next          *string
 	Previous      *string
 }
 
-func startRepl(configuration *config) {
+func startRepl(configuration *Config) {
 	/* start up cli*/
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -62,7 +64,7 @@ func cleanInput(text string) []string {
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
+	callback    func(*Config) error
 }
 
 func getCommands() map[string]cliCommand {
@@ -92,13 +94,13 @@ func getCommands() map[string]cliCommand {
 
 }
 
-func commandExit(configuration *config) error {
+func commandExit(configuration *Config) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(configuration *config) error {
+func commandHelp(configuration *Config) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	fmt.Println()
@@ -112,7 +114,7 @@ func commandHelp(configuration *config) error {
 
 }
 
-func commandMap(configuration *config) error {
+func commandMap(configuration *Config) error {
 	// displays the names of 20 location areas in Pokemon world. Each new call gives next 20
 	baseurl := "https://pokeapi.co/api/v2/location-area/"
 	nextPage := configuration.Next
@@ -120,7 +122,8 @@ func commandMap(configuration *config) error {
 	if nextPage != nil {
 		url = *nextPage
 	}
-	pokeData, err := configuration.PokeapiClient.GetAPIdata(url)
+
+	pokeData, err := configuration.PokeapiClient.GetAPIdata(url, configuration.Cache)
 	if err != nil {
 		fmt.Printf("API call failed %v", err)
 	}
@@ -130,7 +133,7 @@ func commandMap(configuration *config) error {
 
 }
 
-func commandMapb(configuration *config) error {
+func commandMapb(configuration *Config) error {
 	// displays the names of 20 location areas in Pokemon world. This call gives the previous 20 if they exist otherwise just tells you are on the first page
 	previousPage := configuration.Previous
 	if previousPage == nil {
@@ -138,7 +141,7 @@ func commandMapb(configuration *config) error {
 		return nil
 	}
 	url := *previousPage
-	pokeData, err := configuration.PokeapiClient.GetAPIdata(url)
+	pokeData, err := configuration.PokeapiClient.GetAPIdata(url, configuration.Cache)
 	if err != nil {
 		fmt.Printf("API call failed %v", err)
 	}
@@ -146,7 +149,7 @@ func commandMapb(configuration *config) error {
 	return nil
 }
 
-func usePokeData(pokeData pokeapi.PokemonResponse, configuration *config) error {
+func usePokeData(pokeData pokeapi.PokemonResponse, configuration *Config) error {
 	//location := pokeData.Results[0].Name
 	for _, location := range pokeData.Results {
 		fmt.Println(location.Name)
