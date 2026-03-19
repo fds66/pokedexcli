@@ -10,14 +10,14 @@ import (
 )
 
 type config struct {
-	Next     *string
-	Previous *string
+	PokeapiClient pokeapi.Client
+	Next          *string
+	Previous      *string
 }
 
-func startRepl() {
+func startRepl(configuration *config) {
 	/* start up cli*/
 	scanner := bufio.NewScanner(os.Stdin)
-	configuration := initialiseConfig()
 
 	for {
 		fmt.Print("Pokedex >")
@@ -48,12 +48,6 @@ func startRepl() {
 		}
 
 	}
-}
-
-func initialiseConfig() *config {
-	config := config{Next: nil, Previous: nil}
-	return &config
-
 }
 
 func cleanInput(text string) []string {
@@ -126,7 +120,7 @@ func commandMap(configuration *config) error {
 	if nextPage != nil {
 		url = *nextPage
 	}
-	pokeData, err := pokeapi.GetAPIdata(url)
+	pokeData, err := configuration.PokeapiClient.GetAPIdata(url)
 	if err != nil {
 		fmt.Printf("API call failed %v", err)
 	}
@@ -144,7 +138,7 @@ func commandMapb(configuration *config) error {
 		return nil
 	}
 	url := *previousPage
-	pokeData, err := pokeapi.GetAPIdata(url)
+	pokeData, err := configuration.PokeapiClient.GetAPIdata(url)
 	if err != nil {
 		fmt.Printf("API call failed %v", err)
 	}

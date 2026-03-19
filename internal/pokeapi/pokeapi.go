@@ -3,9 +3,22 @@ package pokeapi
 import (
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
+	"time"
 )
+
+type Client struct {
+	httpClient http.Client
+}
+
+func NewClient(timeout time.Duration) Client {
+	return Client{
+		httpClient: http.Client{
+			Timeout: timeout,
+		},
+	}
+
+}
 
 type PokemonResponse struct {
 	Count    int               `json:"count"`
@@ -19,21 +32,27 @@ type PokemonLocation struct {
 	URL  string `json:"url"`
 }
 
-func GetAPIdata(url string) (PokemonResponse, error) {
-	results, err := http.Get(url)
+func (c *Client) GetAPIdata(url string) (PokemonResponse, error) {
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Fatal(err)
+		return PokemonResponse{}, err
+	}
+
+	results, err := c.httpClient.Do(req)
+	if err != nil {
+		return PokemonResponse{}, err
 	}
 	defer results.Body.Close()
 	body, err := io.ReadAll(results.Body)
 	if err != nil {
-		log.Fatal(err)
+		return PokemonResponse{}, err
 	}
 	//fmt.Println(string(body)) if I want to check the body while debugging
 
 	var pokeData PokemonResponse
 	if err := json.Unmarshal(body, &pokeData); err != nil {
-		log.Fatal(err)
+		return PokemonResponse{}, err
 	}
 
 	return pokeData, nil
