@@ -9,7 +9,7 @@ import (
 
 func main() {
 	pokeClient := pokeapi.NewClient(5 * time.Second)
-	newCache := pokecache.NewCache(10 * time.Second)
+	newCache := pokecache.NewCache(20 * time.Second)
 	configuration := &Config{
 		PokeapiClient: pokeClient,
 		Cache:         newCache,

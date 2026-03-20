@@ -59,8 +59,9 @@ func (c *Client) GetAPIdata(url string, cache *pokecache.Cache) (PokemonResponse
 		if err != nil {
 			return PokemonResponse{}, err
 		}
-		if cache.Add(url, body) {
-			fmt.Println("data added to cache")
+
+		if !cache.Add(url, body) {
+			fmt.Println("data failed to add to cache")
 		}
 	}
 

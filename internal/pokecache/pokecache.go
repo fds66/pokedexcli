@@ -1,7 +1,6 @@
 package pokecache
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -23,12 +22,12 @@ func NewCache(time time.Duration) *Cache {
 		CacheEntry: newCacheEntry,
 		Interval:   time,
 	}
-	//newCache.reapLoop()
+	go newCache.reapLoop()
 	return &newCache
 }
 
 func (c *Cache) Add(key string, value []byte) bool {
-	fmt.Println("Adding new data to the cache")
+	//fmt.Println("Adding new data to the cache")
 	c.Mu.Lock()
 	defer c.Mu.Unlock()
 	newEntry := CacheEntry{
@@ -37,13 +36,13 @@ func (c *Cache) Add(key string, value []byte) bool {
 	}
 
 	c.CacheEntry[key] = newEntry
-	fmt.Printf("Added %s to the cache", key)
+	//fmt.Printf("Added %s to the cache", key)
 	return true
 
 }
 
 func (c *Cache) Get(key string) ([]byte, bool) {
-	fmt.Println("Retrieving data from the cache")
+	//fmt.Println("Retrieving data from the cache")
 	entry, exists := c.CacheEntry[key]
 	if exists {
 		return entry.Val, true
@@ -52,6 +51,21 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 	}
 }
 
-//func (c *Cache) reapLoop() {
-//return
-//}
+func (c *Cache) reapLoop() {
+	// each time interval passes it will remove entries older than interval
+	ticker := time.NewTicker(c.Interval)
+
+	go func() {
+		for range ticker.C {
+			for entry := range c.CacheEntry {
+
+				if time.Since(c.CacheEntry[entry].CreatedAt) > c.Interval {
+
+					c.Mu.Lock()
+					delete(c.CacheEntry, entry)
+					c.Mu.Unlock()
+				}
+			}
+		}
+	}()
+}
