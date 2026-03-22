@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 
@@ -15,6 +16,7 @@ type Config struct {
 	Cache         *pokecache.Cache
 	Next          *string
 	Previous      *string
+	Pokedex       map[string]Pokemon
 }
 
 func startRepl(configuration *Config) {
@@ -102,6 +104,11 @@ func getCommands() map[string]cliCommand {
 			description: "Prints the pokemon found in a specified location",
 			callback:    commandExplore,
 		},
+		"catch": {
+			name:        "catch",
+			description: "Tries to catch a specified pokemon",
+			callback:    commandCatch,
+		},
 	}
 
 }
@@ -184,6 +191,7 @@ func commandExplore(configuration *Config, args ...string) error {
 	// displays the names pokemon in the specified location areas in Pokemon world
 
 	location := args[0]
+	fmt.Printf("location %s, args %v\n", location, args)
 	if location == "" {
 		fmt.Println("no location specified")
 		return fmt.Errorf("no location")
@@ -193,7 +201,8 @@ func commandExplore(configuration *Config, args ...string) error {
 
 	pokeData, err := configuration.PokeapiClient.GetPokemonList(url, configuration.Cache)
 	if err != nil {
-		fmt.Printf("API call failed %v", err)
+		fmt.Printf("API call failed %v\n", err)
+		return err
 	}
 	fmt.Printf("Exploring %s...\n", pokeData.Location.Name)
 	for _, encounter := range pokeData.PokemonEncounters {
@@ -204,17 +213,48 @@ func commandExplore(configuration *Config, args ...string) error {
 
 }
 
-/*
-type PokemonList struct {
-	Location struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"location"`
+type Pokemon struct {
+	Name string
+	Info pokeapi.PokemonData
+}
 
-	PokemonEncounters []struct {
-		Pokemon struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
-		} `json:"pokemon"`
-	} `json:"pokemon_encounters"`
-}*/
+func commandCatch(configuration *Config, args ...string) error {
+	// displays the names pokemon in the specified location areas in Pokemon world
+
+	pokemon := args[0]
+	if pokemon == "" {
+		fmt.Println("no pokemon specified")
+		return fmt.Errorf("no location")
+	}
+	baseurl := "https://pokeapi.co/api/v2/pokemon/"
+	url := fmt.Sprintf("%s%s", baseurl, pokemon)
+
+	pokeData, err := configuration.PokeapiClient.GetPokemonData(url, configuration.Cache)
+	if err != nil {
+		fmt.Printf("API call failed %v", err)
+	}
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokeData.Name)
+	baseExperience := pokeData.BaseExperience
+	maxExperience := 300
+
+	chance := rand.Float32()
+
+	fmt.Printf("chance %.2f, base experience %v\n", chance, baseExperience)
+	if chance*float32(maxExperience) > float32(baseExperience) {
+		fmt.Printf("You caught %s, adding to your pokedex\n", pokeData.Name)
+		newPokedexEntry := Pokemon{
+			Name: pokeData.Name,
+			Info: pokeData,
+		}
+
+		configuration.Pokedex[pokeData.Name] = newPokedexEntry
+		fmt.Println("Pokemon in the Pokedex")
+		for _, name := range configuration.Pokedex {
+			fmt.Printf("- %s\n", name.Name)
+		}
+	} else {
+		fmt.Printf("%s broke free and was not captured\n", pokeData.Name)
+	}
+	return nil
+
+}
