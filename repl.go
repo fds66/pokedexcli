@@ -109,6 +109,11 @@ func getCommands() map[string]cliCommand {
 			description: "Tries to catch a specified pokemon",
 			callback:    commandCatch,
 		},
+		"inspect": {
+			name:        "inspect",
+			description: "Gives the information about a pokemon you have caught",
+			callback:    commandInspect,
+		},
 	}
 
 }
@@ -224,7 +229,7 @@ func commandCatch(configuration *Config, args ...string) error {
 	pokemon := args[0]
 	if pokemon == "" {
 		fmt.Println("no pokemon specified")
-		return fmt.Errorf("no location")
+		return fmt.Errorf("no pokemon specified")
 	}
 	baseurl := "https://pokeapi.co/api/v2/pokemon/"
 	url := fmt.Sprintf("%s%s", baseurl, pokemon)
@@ -254,6 +259,34 @@ func commandCatch(configuration *Config, args ...string) error {
 		}
 	} else {
 		fmt.Printf("%s broke free and was not captured\n", pokeData.Name)
+	}
+	return nil
+
+}
+
+func commandInspect(configuration *Config, args ...string) error {
+	pokemon := args[0]
+	if pokemon == "" {
+		fmt.Println("no pokemon specified")
+		return fmt.Errorf("no pokemon specified")
+	}
+	entry, exists := configuration.Pokedex[pokemon]
+	if !exists {
+		fmt.Printf("You have not caught that pokemon\n")
+		return fmt.Errorf("You have not caught that pokemon")
+	}
+	fmt.Printf("Name: %s\n", pokemon)
+	fmt.Printf("Height: %v\n", entry.Info.Height)
+	fmt.Printf("Weight: %v\n", entry.Info.Weight)
+	fmt.Println("Stats:")
+	for _, stat := range entry.Info.Stats {
+		fmt.Printf("   -%s: %v\n", stat.Stat.Name, stat.BaseStat)
+
+	}
+	fmt.Println("Types:")
+	for _, types := range entry.Info.Types {
+		fmt.Printf("   -%s\n", types.Type.Name)
+
 	}
 	return nil
 
