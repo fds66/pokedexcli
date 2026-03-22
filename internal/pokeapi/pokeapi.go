@@ -35,7 +35,51 @@ type PokemonLocation struct {
 	URL  string `json:"url"`
 }
 
-func (c *Client) GetAPIdata(url string, cache *pokecache.Cache) (PokemonResponse, error) {
+func (c *Client) GetLocationList(url string, cache *pokecache.Cache) (PokemonResponse, error) {
+	body, err := c.GetAPIdata(url, cache)
+	if err != nil {
+		return PokemonResponse{}, err
+	}
+	//fmt.Println(string(body)) //if I want to check the body while debugging
+
+	var pokeData PokemonResponse
+	if err := json.Unmarshal(body, &pokeData); err != nil {
+		return PokemonResponse{}, err
+	}
+
+	return pokeData, nil
+}
+
+type PokemonList struct {
+	Location struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
+	} `json:"location"`
+
+	PokemonEncounters []struct {
+		Pokemon struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"pokemon"`
+	} `json:"pokemon_encounters"`
+}
+
+func (c *Client) GetPokemonList(url string, cache *pokecache.Cache) (PokemonList, error) {
+	body, err := c.GetAPIdata(url, cache)
+	if err != nil {
+		return PokemonList{}, err
+	}
+	//fmt.Println(string(body)) //if I want to check the body while debugging
+
+	var pokeData PokemonList
+	if err := json.Unmarshal(body, &pokeData); err != nil {
+		return PokemonList{}, err
+	}
+
+	return pokeData, nil
+}
+
+func (c *Client) GetAPIdata(url string, cache *pokecache.Cache) ([]byte, error) {
 
 	// Check if the results already exist in the cache
 
@@ -47,17 +91,17 @@ func (c *Client) GetAPIdata(url string, cache *pokecache.Cache) (PokemonResponse
 	} else {
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
-			return PokemonResponse{}, err
+			return body, err
 		}
 
 		results, err := c.httpClient.Do(req)
 		if err != nil {
-			return PokemonResponse{}, err
+			return body, err
 		}
 		defer results.Body.Close()
 		body, err = io.ReadAll(results.Body)
 		if err != nil {
-			return PokemonResponse{}, err
+			return body, err
 		}
 
 		if !cache.Add(url, body) {
@@ -67,10 +111,5 @@ func (c *Client) GetAPIdata(url string, cache *pokecache.Cache) (PokemonResponse
 
 	//fmt.Println(string(body)) //if I want to check the body while debugging
 
-	var pokeData PokemonResponse
-	if err := json.Unmarshal(body, &pokeData); err != nil {
-		return PokemonResponse{}, err
-	}
-
-	return pokeData, nil
+	return body, nil
 }

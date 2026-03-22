@@ -36,6 +36,13 @@ func startRepl(configuration *Config) {
 			continue
 		}
 		commandWord := cleanInputList[0]
+		var argument string
+		if len(cleanInputList) > 1 {
+			argument = cleanInputList[1]
+
+		} else {
+			argument = ""
+		}
 		//if the command exists then execute the callback function
 
 		cmd, exists := getCommands()[commandWord]
@@ -44,7 +51,7 @@ func startRepl(configuration *Config) {
 			continue
 		}
 
-		err2 := cmd.callback(configuration)
+		err2 := cmd.callback(configuration, argument)
 		if err2 != nil {
 			fmt.Printf("Error executing command, %v\n", err)
 		}
@@ -64,7 +71,7 @@ func cleanInput(text string) []string {
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*Config) error
+	callback    func(*Config, ...string) error
 }
 
 func getCommands() map[string]cliCommand {
@@ -90,17 +97,22 @@ func getCommands() map[string]cliCommand {
 			description: "Prints the previous list of locations",
 			callback:    commandMapb,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Prints the pokemon found in a specified location",
+			callback:    commandExplore,
+		},
 	}
 
 }
 
-func commandExit(configuration *Config) error {
+func commandExit(configuration *Config, args ...string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(configuration *Config) error {
+func commandHelp(configuration *Config, args ...string) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	fmt.Println()
@@ -114,7 +126,7 @@ func commandHelp(configuration *Config) error {
 
 }
 
-func commandMap(configuration *Config) error {
+func commandMap(configuration *Config, args ...string) error {
 	// displays the names of 20 location areas in Pokemon world. Each new call gives next 20
 	baseurl := "https://pokeapi.co/api/v2/location-area/"
 	nextPage := configuration.Next
@@ -123,7 +135,7 @@ func commandMap(configuration *Config) error {
 		url = *nextPage
 	}
 
-	pokeData, err := configuration.PokeapiClient.GetAPIdata(url, configuration.Cache)
+	pokeData, err := configuration.PokeapiClient.GetLocationList(url, configuration.Cache)
 	if err != nil {
 		fmt.Printf("API call failed %v", err)
 	}
@@ -133,7 +145,7 @@ func commandMap(configuration *Config) error {
 
 }
 
-func commandMapb(configuration *Config) error {
+func commandMapb(configuration *Config, args ...string) error {
 	// displays the names of 20 location areas in Pokemon world. This call gives the previous 20 if they exist otherwise just tells you are on the first page
 	previousPage := configuration.Previous
 	if previousPage == nil {
@@ -141,7 +153,7 @@ func commandMapb(configuration *Config) error {
 		return nil
 	}
 	url := *previousPage
-	pokeData, err := configuration.PokeapiClient.GetAPIdata(url, configuration.Cache)
+	pokeData, err := configuration.PokeapiClient.GetLocationList(url, configuration.Cache)
 	if err != nil {
 		fmt.Printf("API call failed %v", err)
 	}
@@ -167,3 +179,42 @@ func usePokeData(pokeData pokeapi.PokemonResponse, configuration *Config) error 
 	}
 	return nil
 }
+
+func commandExplore(configuration *Config, args ...string) error {
+	// displays the names pokemon in the specified location areas in Pokemon world
+
+	location := args[0]
+	if location == "" {
+		fmt.Println("no location specified")
+		return fmt.Errorf("no location")
+	}
+	baseurl := "https://pokeapi.co/api/v2/location-area/"
+	url := fmt.Sprintf("%s%s", baseurl, location)
+
+	pokeData, err := configuration.PokeapiClient.GetPokemonList(url, configuration.Cache)
+	if err != nil {
+		fmt.Printf("API call failed %v", err)
+	}
+	fmt.Printf("Exploring %s...\n", pokeData.Location.Name)
+	for _, encounter := range pokeData.PokemonEncounters {
+		fmt.Printf("- %s\n", encounter.Pokemon.Name)
+	}
+
+	return nil
+
+}
+
+/*
+type PokemonList struct {
+	Location struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
+	} `json:"location"`
+
+	PokemonEncounters []struct {
+		Pokemon struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"pokemon"`
+	} `json:"pokemon_encounters"`
+}*/
