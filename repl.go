@@ -114,6 +114,11 @@ func getCommands() map[string]cliCommand {
 			description: "Gives the information about a pokemon you have caught",
 			callback:    commandInspect,
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Gives a list of the pokemon you have caught",
+			callback:    commandPokedex,
+		},
 	}
 
 }
@@ -251,12 +256,9 @@ func commandCatch(configuration *Config, args ...string) error {
 			Name: pokeData.Name,
 			Info: pokeData,
 		}
-
 		configuration.Pokedex[pokeData.Name] = newPokedexEntry
-		fmt.Println("Pokemon in the Pokedex")
-		for _, name := range configuration.Pokedex {
-			fmt.Printf("- %s\n", name.Name)
-		}
+		fmt.Println("You may now inspect it with the inspect command")
+
 	} else {
 		fmt.Printf("%s broke free and was not captured\n", pokeData.Name)
 	}
@@ -290,4 +292,12 @@ func commandInspect(configuration *Config, args ...string) error {
 	}
 	return nil
 
+}
+
+func commandPokedex(configuration *Config, args ...string) error {
+	fmt.Println("Your Pokedex")
+	for _, name := range configuration.Pokedex {
+		fmt.Printf("- %s\n", name.Name)
+	}
+	return nil
 }
